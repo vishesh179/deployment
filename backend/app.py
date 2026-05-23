@@ -1,16 +1,17 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
-import os
 from dotenv import load_dotenv
-load_dotenv()
+import os
 
+# Load environment variables
+load_dotenv()
 
 # FastAPI app
 app = FastAPI()
 
-# CORS
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,24 +20,35 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Get API key from environment
+api_key = os.getenv("NEXUS_API_KEY")
+
+if not api_key:
+    raise ValueError("NEXUS_API_KEY environment variable is missing")
+
 # OpenAI client
 client = OpenAI(
-    api_key=os.getenv("NEXUS_API_KEY"),
+    api_key=api_key,
     base_url="https://apidev.navigatelabsai.com"
 )
 
-# Request model
+# Request body model
 class PromptRequest(BaseModel):
     user_prompt: str
 
-# Health check
+# Root endpoint
 @app.get("/")
 def read_root():
-    return {"message": "NexusAI is working"}
+    return {
+        "message": "NexusAI backend is running successfully"
+    }
 
+# Welcome endpoint
 @app.get("/welcome")
 def welcome():
-    return {"message": "Welcome to Navi Chat"}
+    return {
+        "message": "Welcome to Navi Chat"
+    }
 
 # AI endpoint
 @app.post("/run_task")
@@ -65,4 +77,7 @@ async def run_task(req: PromptRequest):
         }
 
     except Exception as e:
-        return {"error": str(e)}
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
